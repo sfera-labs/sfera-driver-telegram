@@ -4,13 +4,14 @@
 
 	<groupId>cc.sferalabs.sfera.drivers</groupId>
 	<artifactId>telegram</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 
 	<name>TelegramBot</name>
-	<description>Telegram bot</description>
+	<description>Telegram Bot</description>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<sfera-version>0.0.2-SNAPSHOT</sfera-version>
 	</properties>
 
 	<build>
@@ -51,6 +52,32 @@
 					</descriptorRefs>
 				</configuration>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>2.10.3</version>
+				<configuration>
+					<show>public</show>
+					<taglets>
+						<taglet>
+							<tagletClass>cc.sferalabs.sfera.doc.taglets.ConfigParamTaglet</tagletClass>
+							<tagletArtifact>
+								<groupId>cc.sferalabs.sfera</groupId>
+								<artifactId>sfera</artifactId>
+								<version>${sfera-version}</version>
+							</tagletArtifact>
+						</taglet>
+					</taglets>
+				</configuration>
+				<executions>
+					<execution>
+						<id>attach-javadocs</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 
@@ -65,7 +92,7 @@
 		<dependency>
 			<groupId>cc.sferalabs.sfera</groupId>
 			<artifactId>sfera</artifactId>
-			<version>0.0.2-SNAPSHOT</version>
+			<version>${sfera-version}</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>

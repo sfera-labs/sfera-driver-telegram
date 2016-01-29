@@ -39,9 +39,9 @@ import cc.sferalabs.sfera.events.Bus;
  * @version 1.0.0
  *
  */
-public class SferaBot extends Driver {
+public class Telegram extends Driver {
 
-	private static final int POLLING_TIMEOUT = 60000;
+	private static final int POLLING_TIMEOUT = 60;
 	private static final int REQUEST_TIMEOUT = 10000;
 	private final Path authorizedUsersFile = getDriverInstanceDataDir().resolve("users");
 	private TelegramBot telegram;
@@ -49,7 +49,7 @@ public class SferaBot extends Driver {
 	private String botSecret;
 	private final Set<Integer> authorizedUsers = new HashSet<>();
 
-	public SferaBot(String id) {
+	public Telegram(String id) {
 		super(id);
 	}
 
@@ -104,7 +104,7 @@ public class SferaBot extends Driver {
 						log.error("Error processing update " + update, e);
 					}
 				}
-				
+
 				int updateId = update.getUpdateId();
 				if (offset == null || updateId >= offset) {
 					offset = updateId + 1;
