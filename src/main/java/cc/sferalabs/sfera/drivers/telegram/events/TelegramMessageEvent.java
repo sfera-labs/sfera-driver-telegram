@@ -8,6 +8,7 @@ import cc.sferalabs.sfera.drivers.telegram.Telegram;
 import cc.sferalabs.sfera.events.BaseEvent;
 
 /**
+ * Event triggered when the Telegram Bot receives a message.
  * 
  * @author Giampiero Baggiani
  *
@@ -21,7 +22,9 @@ public class TelegramMessageEvent extends BaseEvent implements TelegramEvent {
 	/**
 	 * 
 	 * @param source
+	 *            source driver
 	 * @param message
+	 *            received message
 	 */
 	public TelegramMessageEvent(Telegram source, Message message) {
 		super(source, "message");

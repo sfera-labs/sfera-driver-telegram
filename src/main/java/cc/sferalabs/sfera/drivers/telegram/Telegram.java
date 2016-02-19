@@ -6,8 +6,10 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -33,7 +35,8 @@ import cc.sferalabs.sfera.drivers.telegram.events.TelegramMessageEvent;
 import cc.sferalabs.sfera.events.Bus;
 
 /**
- *
+ * Telegram Bot API driver
+ * 
  * @author Giampiero Baggiani
  *
  * @version 1.0.0
@@ -177,92 +180,152 @@ public class Telegram extends Driver {
 	}
 
 	/**
+	 * @param replyMarkup
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	private ReplyMarkup toReplyMarkup(Map<String, Object> map) {
+		if (map == null) {
+			return null;
+		}
+		Object keyboard = map.get("keyboard");
+		if (keyboard != null) {
+			Boolean resizeKeyboard = (Boolean) map.get("resize_keyboard");
+			Boolean oneTimeKeyboard = (Boolean) map.get("one_time_keyboard");
+			Boolean selective = (Boolean) map.get("selective");
+			String[][] kb = null;
+			if (keyboard instanceof String[][]) {
+				kb = (String[][]) keyboard;
+			}
+			if (keyboard instanceof Map) {
+				kb = new String[((Map<Object, Object>) keyboard).size()][];
+				int l = 0;
+				for (Object line : ((Map<Object, Object>) keyboard).values()) {
+					Collection<String> keys = ((Map<Object, String>) line).values();
+					kb[l] = new String[keys.size()];
+					int k = 0;
+					for (String key : keys) {
+						kb[l][k] = key;
+						k++;
+					}
+					l++;
+				}
+			}
+			if (kb != null) {
+				return new ReplyKeyboardMarkup(kb, resizeKeyboard, oneTimeKeyboard, selective);
+			}
+		}
+		Object hideKeyboard = map.get("hide_keyboard");
+		if (hideKeyboard == Boolean.TRUE) {
+			Boolean selective = (Boolean) map.get("selective");
+			return new ReplyKeyboardHide(selective);
+		}
+		Object forceReply = map.get("force_reply");
+		if (forceReply == Boolean.TRUE) {
+			Boolean selective = (Boolean) map.get("selective");
+			return new ForceReply(selective);
+		}
+		throw new IllegalArgumentException();
+	}
+
+	/**
+	 * Sends a text message to the specified chat.
+	 * <p>
+	 * Refer to: https://core.telegram.org/bots/api#sendmessage
 	 * 
 	 * @param chatId
+	 *            Unique identifier for the target chat
 	 * @param text
+	 *            Text of the message to be sent
 	 * @throws ResponseError
+	 *             if the server returned an error response
 	 * @throws ParseException
+	 *             if an error occurs while parsing the server response
 	 * @throws IOException
+	 *             if an I/O exception occurs
 	 */
 	public void sendMessage(int chatId, String text)
 			throws IOException, ParseException, ResponseError {
-		sendMessage(chatId, text, null, null, null, (ReplyMarkup) null);
+		sendMessage(chatId, text, null, null, null, null);
 	}
 
 	/**
+	 * Sends a text message to the specified chat.
+	 * <p>
+	 * Optional parameters can be set to {@code null} for default behaviors.
+	 * <p>
+	 * Refer to: https://core.telegram.org/bots/api#sendmessage
 	 * 
 	 * @param chatId
+	 *            Unique identifier for the target chat
 	 * @param text
+	 *            Text of the message to be sent
 	 * @param parseMode
+	 *            "Markdown" or "HTML"
 	 * @param disableWebPagePreview
+	 *            if {@code true}, disables link previews for links in this
+	 *            message
 	 * @param replyToMessageId
-	 * @param keyboard
-	 * @param resizeKeyboard
-	 * @param oneTimeKeyboard
-	 * @param selective
-	 * @throws IOException
-	 * @throws ParseException
-	 * @throws ResponseError
-	 */
-	public void sendMessage(int chatId, String text, String parseMode,
-			Boolean disableWebPagePreview, Integer replyToMessageId, String[][] keyboard,
-			Boolean resizeKeyboard, Boolean oneTimeKeyboard, Boolean selective)
-					throws IOException, ParseException, ResponseError {
-		sendMessage(chatId, text, parseMode, disableWebPagePreview, replyToMessageId,
-				new ReplyKeyboardMarkup(keyboard, resizeKeyboard, oneTimeKeyboard, selective));
-	}
-
-	/**
-	 * @param chatId
-	 * @param text
-	 * @param parseMode
-	 * @param disableWebPagePreview
-	 * @param replyToMessageId
-	 * @param hideOrForce
-	 * @param selective
-	 * @throws IOException
-	 * @throws ParseException
-	 * @throws ResponseError
-	 */
-	public void sendMessage(int chatId, String text, String parseMode,
-			Boolean disableWebPagePreview, Integer replyToMessageId, String hideOrForce,
-			Boolean selective) throws IOException, ParseException, ResponseError {
-		ReplyMarkup replyMarkup;
-		if (hideOrForce.toLowerCase().startsWith("hide")) {
-			replyMarkup = new ReplyKeyboardHide(selective);
-		} else {
-			replyMarkup = new ForceReply(selective);
-		}
-		sendMessage(chatId, text, parseMode, disableWebPagePreview, replyToMessageId, replyMarkup);
-	}
-
-	/**
-	 * 
-	 * @param chatId
-	 * @param text
-	 * @param parseMode
-	 * @param disableWebPagePreview
-	 * @param replyToMessageId
+	 *            If the message is a reply, ID of the original message
 	 * @param replyMarkup
+	 *            Map representing the 'reply_markup' parameter.
+	 *            <p>
+	 *            Refer to:
+	 *            <ul>
+	 *            <li>https://core.telegram.org/bots/api#replykeyboardmarkup
+	 *            </li>
+	 *            <li>https://core.telegram.org/bots/api#replykeyboardhide</li>
+	 *            <li>https://core.telegram.org/bots/api#forcereply</li>
+	 *            </ul>
+	 * 
+	 *            Java example:
+	 * 
+	 *            <pre>
+	 *            Map&lt;String, Object&gt; replyMarkup = new HashMap&lt;&gt;();
+	 *            replyMarkup.put("keyboard", new String[][] { { "1", "2" }, { "3", "4" } });
+	 *            replyMarkup.put("one_time_keyboard", true);
+	 *            </pre>
+	 * 
+	 *            Script example:
+	 * 
+	 *            <pre>
+	 *            var replyMarkup = {};
+	 *            replyMarkup['keyboard'] = [["1","2"],["3","4"]];
+	 *            replyMarkup['one_time_keyboard'] = true;
+	 *            </pre>
+	 * 
 	 * @throws ResponseError
+	 *             if the server returned an error response
 	 * @throws ParseException
+	 *             if an error occurs while parsing the server response
 	 * @throws IOException
+	 *             if an I/O exception occurs
 	 */
 	public void sendMessage(int chatId, String text, String parseMode,
-			Boolean disableWebPagePreview, Integer replyToMessageId, ReplyMarkup replyMarkup)
-					throws IOException, ParseException, ResponseError {
+			Boolean disableWebPagePreview, Integer replyToMessageId,
+			Map<String, Object> replyMarkup) throws IOException, ParseException, ResponseError {
 		log.debug("Sending message to {}: {}", chatId, text);
 		telegram.sendRequest(new SendMessageRequest(chatId, text, parseMode, disableWebPagePreview,
-				replyToMessageId, replyMarkup), REQUEST_TIMEOUT);
+				replyToMessageId, toReplyMarkup(replyMarkup)), REQUEST_TIMEOUT);
 	}
 
 	/**
+	 * Sends a chat action to the specified chat.
+	 * <p>
+	 * Refer to: https://core.telegram.org/bots/api#sendchataction
 	 * 
 	 * @param chatId
+	 *            Unique identifier for the target chat
 	 * @param action
-	 * @throws IOException
-	 * @throws ParseException
+	 *            Type of action to broadcast: "typing", "upload_photo",
+	 *            "record_video", "upload_video", "record_audio",
+	 *            "upload_audio", "upload_document", or "find_location".
 	 * @throws ResponseError
+	 *             if the server returned an error response
+	 * @throws ParseException
+	 *             if an error occurs while parsing the server response
+	 * @throws IOException
+	 *             if an I/O exception occurs
 	 */
 	public void sendChatAction(int chatId, String action)
 			throws IOException, ParseException, ResponseError {
@@ -271,13 +334,24 @@ public class Telegram extends Driver {
 	}
 
 	/**
+	 * Sends an image to the specified chat.
+	 * <p>
+	 * Optional parameters can be set to {@code null} for default behaviors.
+	 * <p>
+	 * Refer to: https://core.telegram.org/bots/api#sendphoto
 	 * 
 	 * @param chatId
+	 *            Unique identifier for the target chat
 	 * @param path
+	 *            Path of the image file to send
 	 * @param caption
-	 * @throws IOException
-	 * @throws ParseException
+	 *            Photo caption
 	 * @throws ResponseError
+	 *             if the server returned an error response
+	 * @throws ParseException
+	 *             if an error occurs while parsing the server response
+	 * @throws IOException
+	 *             if an I/O exception occurs
 	 */
 	public void sendPhoto(int chatId, String path, String caption)
 			throws IOException, ParseException, ResponseError {
@@ -285,62 +359,57 @@ public class Telegram extends Driver {
 	}
 
 	/**
+	 * Sends an image to the specified chat.
+	 * <p>
+	 * Optional parameters can be set to {@code null} for default behaviors.
+	 * <p>
+	 * Refer to: https://core.telegram.org/bots/api#sendphoto
 	 * 
 	 * @param chatId
+	 *            Unique identifier for the target chat
 	 * @param path
+	 *            Path of the image file to send
 	 * @param caption
+	 *            Photo caption
 	 * @param replyToMessageId
+	 *            If the message is a reply, ID of the original message
 	 * @param replyMarkup
-	 * @throws IOException
-	 * @throws ParseException
+	 *            Map representing the 'reply_markup' parameter. See
+	 *            {@link #sendMessage(int, String, String, Boolean, Integer, Map)}
+	 *            for details
 	 * @throws ResponseError
+	 *             if the server returned an error response
+	 * @throws ParseException
+	 *             if an error occurs while parsing the server response
+	 * @throws IOException
+	 *             if an I/O exception occurs
 	 */
 	public void sendPhoto(int chatId, String path, String caption, Integer replyToMessageId,
-			ReplyMarkup replyMarkup) throws IOException, ParseException, ResponseError {
+			Map<String, Object> replyMarkup) throws IOException, ParseException, ResponseError {
 		log.debug("Sending image to {}: {}", chatId, path);
 		telegram.sendRequest(new SendPhotoRequest(chatId, Paths.get(path), caption,
-				replyToMessageId, replyMarkup), REQUEST_TIMEOUT);
+				replyToMessageId, toReplyMarkup(replyMarkup)), REQUEST_TIMEOUT);
 	}
 
 	/**
+	 * Sends an audio file to the specified chat.
+	 * <p>
+	 * Optional parameters can be set to {@code null} for default behaviors.
+	 * <p>
+	 * Refer to: https://core.telegram.org/bots/api#sendaudio
 	 * 
 	 * @param chatId
+	 *            Unique identifier for the target chat
 	 * @param path
-	 * @throws IOException
-	 * @throws ParseException
-	 * @throws ResponseError
-	 */
-	public void sendDocument(int chatId, String path)
-			throws IOException, ParseException, ResponseError {
-		sendDocument(chatId, path, null, null);
-	}
-
-	/**
-	 * 
-	 * @param chatId
-	 * @param path
-	 * @param replyToMessageId
-	 * @param replyMarkup
-	 * @throws IOException
-	 * @throws ParseException
-	 * @throws ResponseError
-	 */
-	public void sendDocument(int chatId, String path, Integer replyToMessageId,
-			ReplyMarkup replyMarkup) throws IOException, ParseException, ResponseError {
-		log.debug("Sending document to {}: {}", chatId, path);
-		telegram.sendRequest(
-				new SendDocumentRequest(chatId, Paths.get(path), replyToMessageId, replyMarkup),
-				REQUEST_TIMEOUT);
-	}
-
-	/**
-	 * 
-	 * @param chatId
-	 * @param path
+	 *            Path of the audio file to send
 	 * @param title
-	 * @throws IOException
-	 * @throws ParseException
+	 *            Track name
 	 * @throws ResponseError
+	 *             if the server returned an error response
+	 * @throws ParseException
+	 *             if an error occurs while parsing the server response
+	 * @throws IOException
+	 *             if an I/O exception occurs
 	 */
 	public void sendAudio(int chatId, String path, String title)
 			throws IOException, ParseException, ResponseError {
@@ -348,23 +417,93 @@ public class Telegram extends Driver {
 	}
 
 	/**
+	 * Sends an audio file to the specified chat.
+	 * <p>
+	 * Optional parameters can be set to {@code null} for default behaviors.
+	 * <p>
+	 * Refer to: https://core.telegram.org/bots/api#sendaudio
 	 * 
 	 * @param chatId
+	 *            Unique identifier for the target chat
 	 * @param path
+	 *            Path of the audio file to send
 	 * @param duration
+	 *            Duration of the audio in seconds
 	 * @param performer
+	 *            Performer
 	 * @param title
+	 *            Track name
 	 * @param replyToMessageId
+	 *            If the message is a reply, ID of the original message
 	 * @param replyMarkup
-	 * @throws IOException
-	 * @throws ParseException
+	 *            Map representing the 'reply_markup' parameter. See
+	 *            {@link #sendMessage(int, String, String, Boolean, Integer, Map)}
+	 *            for details
 	 * @throws ResponseError
+	 *             if the server returned an error response
+	 * @throws ParseException
+	 *             if an error occurs while parsing the server response
+	 * @throws IOException
+	 *             if an I/O exception occurs
 	 */
 	public void sendAudio(int chatId, String path, Integer duration, String performer, String title,
-			Integer replyToMessageId, ReplyMarkup replyMarkup)
+			Integer replyToMessageId, Map<String, Object> replyMarkup)
 					throws IOException, ParseException, ResponseError {
 		log.debug("Sending audio to {}: {}", chatId, path);
 		telegram.sendRequest(new SendAudioRequest(chatId, Paths.get(path), duration, performer,
-				title, replyToMessageId, replyMarkup), REQUEST_TIMEOUT);
+				title, replyToMessageId, toReplyMarkup(replyMarkup)), REQUEST_TIMEOUT);
 	}
+
+	/**
+	 * Sends a general file to the specified chat.
+	 * <p>
+	 * Refer to: https://core.telegram.org/bots/api#senddocument
+	 * 
+	 * @param chatId
+	 *            Unique identifier for the target chat
+	 * @param path
+	 *            Path of the file to send
+	 * @throws ResponseError
+	 *             if the server returned an error response
+	 * @throws ParseException
+	 *             if an error occurs while parsing the server response
+	 * @throws IOException
+	 *             if an I/O exception occurs
+	 */
+	public void sendDocument(int chatId, String path)
+			throws IOException, ParseException, ResponseError {
+		sendDocument(chatId, path, null, null);
+	}
+
+	/**
+	 * Sends a general file to the specified chat.
+	 * <p>
+	 * Optional parameters can be set to {@code null} for default behaviors.
+	 * <p>
+	 * Refer to: https://core.telegram.org/bots/api#senddocument
+	 * 
+	 * @param chatId
+	 *            Unique identifier for the target chat
+	 * @param path
+	 *            Path of the file to send
+	 * @param replyToMessageId
+	 *            If the message is a reply, ID of the original message
+	 * @param replyMarkup
+	 *            Map representing the 'reply_markup' parameter. See
+	 *            {@link #sendMessage(int, String, String, Boolean, Integer, Map)}
+	 *            for details
+	 * @throws ResponseError
+	 *             if the server returned an error response
+	 * @throws ParseException
+	 *             if an error occurs while parsing the server response
+	 * @throws IOException
+	 *             if an I/O exception occurs
+	 */
+	public void sendDocument(int chatId, String path, Integer replyToMessageId,
+			Map<String, Object> replyMarkup) throws IOException, ParseException, ResponseError {
+		log.debug("Sending document to {}: {}", chatId, path);
+		telegram.sendRequest(new SendDocumentRequest(chatId, Paths.get(path), replyToMessageId,
+				toReplyMarkup(replyMarkup)), REQUEST_TIMEOUT);
+	}
+
 }

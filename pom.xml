@@ -6,12 +6,12 @@
 	<artifactId>telegram</artifactId>
 	<version>1.0.0</version>
 
-	<name>TelegramBot</name>
-	<description>Telegram Bot</description>
+	<name>Telegram</name>
+	<description>Driver implementing the Telegram Bot API</description>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<sfera-version>0.0.2-SNAPSHOT</sfera-version>
+		<sfera-version>0.1.0</sfera-version>
 	</properties>
 
 	<build>
@@ -26,6 +26,7 @@
 				</includes>
 			</resource>
 		</resources>
+
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -54,10 +55,35 @@
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>2.4</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
 				<version>2.10.3</version>
+				<executions>
+					<execution>
+						<id>attach-javadocs</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
 				<configuration>
 					<show>public</show>
+					<links>
+						<link>http://sfera.sferalabs.cc/docs/sfera/apidocs</link>
+						<link>http://sfera.sferalabs.cc/docs/libs/telegram-bot/apidocs</link>
+					</links>
 					<taglets>
 						<taglet>
 							<tagletClass>cc.sferalabs.sfera.doc.taglets.ConfigParamTaglet</tagletClass>
@@ -69,14 +95,6 @@
 						</taglet>
 					</taglets>
 				</configuration>
-				<executions>
-					<execution>
-						<id>attach-javadocs</id>
-						<goals>
-							<goal>jar</goal>
-						</goals>
-					</execution>
-				</executions>
 			</plugin>
 		</plugins>
 	</build>
@@ -84,7 +102,7 @@
 	<repositories>
 		<repository>
 			<id>sfera-repo</id>
-			<url>http://wiki.sferalabs.cc/mvn-repo/snapshots</url>
+			<url>http://sfera.sferalabs.cc/mvn-repo</url>
 		</repository>
 	</repositories>
 
