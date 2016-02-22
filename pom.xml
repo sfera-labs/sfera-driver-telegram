@@ -82,7 +82,7 @@
 					<show>public</show>
 					<links>
 						<link>http://sfera.sferalabs.cc/docs/sfera/apidocs</link>
-						<link>http://sfera.sferalabs.cc/docs/libs/telegram-bot/apidocs</link>
+						<link>http://sfera.sferalabs.cc/docs/libs/telegram-bot</link>
 					</links>
 					<taglets>
 						<taglet>
