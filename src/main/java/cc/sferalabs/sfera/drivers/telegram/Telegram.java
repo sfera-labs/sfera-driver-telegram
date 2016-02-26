@@ -17,6 +17,7 @@ import org.json.simple.parser.ParseException;
 
 import cc.sferalabs.libs.telegram.bot.api.ResponseError;
 import cc.sferalabs.libs.telegram.bot.api.TelegramBot;
+import cc.sferalabs.libs.telegram.bot.api.requests.Request;
 import cc.sferalabs.libs.telegram.bot.api.requests.SendAudioRequest;
 import cc.sferalabs.libs.telegram.bot.api.requests.SendChatActionRequest;
 import cc.sferalabs.libs.telegram.bot.api.requests.SendDocumentRequest;
@@ -177,6 +178,22 @@ public class Telegram extends Driver {
 
 	@Override
 	protected void onQuit() {
+		telegram = null;
+	}
+
+	/**
+	 * 
+	 * @param req
+	 * @return
+	 * @throws IOException
+	 * @throws ParseException
+	 * @throws ResponseError
+	 */
+	private <T> T sendRequest(Request req) throws IOException, ParseException, ResponseError {
+		if (telegram == null) {
+			throw new IOException("Driver quitted");
+		}
+		return telegram.sendRequest(req, REQUEST_TIMEOUT);
 	}
 
 	/**
@@ -305,8 +322,8 @@ public class Telegram extends Driver {
 			Boolean disableWebPagePreview, Integer replyToMessageId,
 			Map<String, Object> replyMarkup) throws IOException, ParseException, ResponseError {
 		log.debug("Sending message to {}: {}", chatId, text);
-		telegram.sendRequest(new SendMessageRequest(chatId, text, parseMode, disableWebPagePreview,
-				replyToMessageId, toReplyMarkup(replyMarkup)), REQUEST_TIMEOUT);
+		sendRequest(new SendMessageRequest(chatId, text, parseMode, disableWebPagePreview,
+				replyToMessageId, toReplyMarkup(replyMarkup)));
 	}
 
 	/**
@@ -330,7 +347,7 @@ public class Telegram extends Driver {
 	public void sendChatAction(int chatId, String action)
 			throws IOException, ParseException, ResponseError {
 		log.debug("Sending chat action to {}: {}", chatId, action);
-		telegram.sendRequest(new SendChatActionRequest(chatId, action), REQUEST_TIMEOUT);
+		sendRequest(new SendChatActionRequest(chatId, action));
 	}
 
 	/**
@@ -387,8 +404,8 @@ public class Telegram extends Driver {
 	public void sendPhoto(int chatId, String path, String caption, Integer replyToMessageId,
 			Map<String, Object> replyMarkup) throws IOException, ParseException, ResponseError {
 		log.debug("Sending image to {}: {}", chatId, path);
-		telegram.sendRequest(new SendPhotoRequest(chatId, Paths.get(path), caption,
-				replyToMessageId, toReplyMarkup(replyMarkup)), REQUEST_TIMEOUT);
+		sendRequest(new SendPhotoRequest(chatId, Paths.get(path), caption, replyToMessageId,
+				toReplyMarkup(replyMarkup)));
 	}
 
 	/**
@@ -450,8 +467,8 @@ public class Telegram extends Driver {
 			Integer replyToMessageId, Map<String, Object> replyMarkup)
 					throws IOException, ParseException, ResponseError {
 		log.debug("Sending audio to {}: {}", chatId, path);
-		telegram.sendRequest(new SendAudioRequest(chatId, Paths.get(path), duration, performer,
-				title, replyToMessageId, toReplyMarkup(replyMarkup)), REQUEST_TIMEOUT);
+		sendRequest(new SendAudioRequest(chatId, Paths.get(path), duration, performer, title,
+				replyToMessageId, toReplyMarkup(replyMarkup)));
 	}
 
 	/**
@@ -502,8 +519,8 @@ public class Telegram extends Driver {
 	public void sendDocument(int chatId, String path, Integer replyToMessageId,
 			Map<String, Object> replyMarkup) throws IOException, ParseException, ResponseError {
 		log.debug("Sending document to {}: {}", chatId, path);
-		telegram.sendRequest(new SendDocumentRequest(chatId, Paths.get(path), replyToMessageId,
-				toReplyMarkup(replyMarkup)), REQUEST_TIMEOUT);
+		sendRequest(new SendDocumentRequest(chatId, Paths.get(path), replyToMessageId,
+				toReplyMarkup(replyMarkup)));
 	}
 
 }
