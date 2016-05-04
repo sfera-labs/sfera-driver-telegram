@@ -11,6 +11,8 @@ import cc.sferalabs.sfera.events.BaseEvent;
  * Event triggered when the Telegram Bot receives a message.
  * 
  * @sfera.event_id message
+ * @sfera.event_val message_obj see getValue()
+ * @sfera.event_val_simple message_text see getSimpleValue()
  * 
  * @author Giampiero Baggiani
  *
@@ -52,7 +54,7 @@ public class TelegramMessageEvent extends BaseEvent implements TelegramEvent {
 	 *         {@code null} if the message did not contain any text
 	 */
 	@Override
-	public String getScriptConditionValue() {
+	public String getSimpleValue() {
 		return message.getText();
 	}
 
