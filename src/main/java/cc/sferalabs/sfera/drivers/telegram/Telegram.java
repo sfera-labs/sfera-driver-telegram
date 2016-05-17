@@ -47,7 +47,7 @@ public class Telegram extends Driver {
 
 	private static final int POLLING_TIMEOUT = 60;
 	private static final int REQUEST_TIMEOUT = 10000;
-	private final Path authorizedUsersFile = getDriverInstanceDataDir().resolve("users");
+	private Path authorizedUsersFile;
 	private TelegramBot telegram;
 	private Integer offset = null;
 	private String botSecret;
@@ -79,6 +79,7 @@ public class Telegram extends Driver {
 		}
 
 		try {
+			authorizedUsersFile = getDriverInstanceDataDir().resolve("users");
 			List<String> lines = Files.readAllLines(authorizedUsersFile);
 			for (String line : lines) {
 				if (!line.isEmpty()) {
