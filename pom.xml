@@ -14,6 +14,13 @@
 		<sfera-version>0.1.0</sfera-version>
 	</properties>
 
+	<organization>
+		<name>Sfera Labs S.r.l.</name>
+		<url>http://www.sferalabs.cc</url>
+	</organization>
+
+	<inceptionYear>2016</inceptionYear>
+
 	<distributionManagement>
 		<repository>
 			<id>sferalabs.cc</id>
@@ -118,6 +125,23 @@
 						<artifactId>sfera</artifactId>
 						<version>${sfera-version}</version>
 					</tagletArtifact>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>license-maven-plugin</artifactId>
+				<version>1.9</version>
+				<configuration>
+					<licenseName>lgpl_v3</licenseName>
+					<addJavaLicenseAfterPackage>false</addJavaLicenseAfterPackage>
+					<emptyLineAfterHeader>true</emptyLineAfterHeader>
+					<sectionDelimiter>---</sectionDelimiter>
+					<processStartTag>+======================================================================+</processStartTag>
+					<processEndTag>-======================================================================-</processEndTag>
+					<roots>
+						<root>src/main/java</root>
+						<root>src/test/java</root>
+					</roots>
 				</configuration>
 			</plugin>
 		</plugins>
