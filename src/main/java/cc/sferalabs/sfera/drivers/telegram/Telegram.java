@@ -101,11 +101,16 @@ public class Telegram extends Driver {
 		}
 
 		try {
-			authorizedUsersFile = getDriverInstanceDataDir().resolve("users");
-			List<String> lines = Files.readAllLines(authorizedUsersFile);
-			for (String line : lines) {
-				if (!line.isEmpty()) {
-					authorizedUsers.add(Integer.parseInt(line));
+			synchronized (authorizedUsers) {
+				authorizedUsersFile = getDriverInstanceDataDir().resolve("users");
+				List<String> lines = Files.readAllLines(authorizedUsersFile);
+				for (String line : lines) {
+					if (!line.isEmpty()) {
+						int u = Integer.parseInt(line);
+						if (u > 0) {
+							authorizedUsers.add(u);
+						}
+					}
 				}
 			}
 		} catch (NoSuchFileException e) {
@@ -171,10 +176,12 @@ public class Telegram extends Driver {
 			return;
 		}
 
-		if (authorizedUsers.contains(userId)) {
-			Bus.post(new TelegramMessageEvent(this, message));
-		} else {
-			log.warn("Message from unauthorized user {}: {}", userId, text);
+		synchronized (authorizedUsers) {
+			if (authorizedUsers.contains(userId)) {
+				Bus.post(new TelegramMessageEvent(this, message));
+			} else {
+				log.warn("Message from unauthorized user {}: {}", userId, text);
+			}
 		}
 	}
 
@@ -184,18 +191,19 @@ public class Telegram extends Driver {
 	 * @param name
 	 * @throws IOException
 	 */
-	private synchronized void addAuthorizedUser(int id, String name) throws IOException {
-		authorizedUsers.add(id);
+	private void addAuthorizedUser(int id, String name) throws IOException {
+		synchronized (authorizedUsers) {
+			authorizedUsers.add(id);
 
-		String users = String.join("\n", authorizedUsers.stream().map(i -> String.valueOf(i))
-				.collect(Collectors.<String> toList()));
-		if (!Files.exists(authorizedUsersFile)) {
-			Files.createDirectories(authorizedUsersFile.getParent());
+			String users = String.join("\n",
+					authorizedUsers.stream().map(i -> String.valueOf(i)).collect(Collectors.<String>toList()));
+			if (!Files.exists(authorizedUsersFile)) {
+				Files.createDirectories(authorizedUsersFile.getParent());
+			}
+			try (BufferedWriter writer = Files.newBufferedWriter(authorizedUsersFile)) {
+				writer.write(users);
+			}
 		}
-		try (BufferedWriter writer = Files.newBufferedWriter(authorizedUsersFile)) {
-			writer.write(users);
-		}
-
 		log.info("Added authorized user: {} ({})", id, name);
 	}
 
@@ -269,12 +277,13 @@ public class Telegram extends Driver {
 	}
 
 	/**
-	 * Sends a text message to the specified chat.
+	 * Sends a text message to the specified chat or to all authorized users.
 	 * <p>
 	 * Refer to: https://core.telegram.org/bots/api#sendmessage
 	 * 
 	 * @param chatId
-	 *            Unique identifier for the target chat
+	 *            Unique identifier for the target chat or {@code 0} to sent to
+	 *            all authorized users
 	 * @param text
 	 *            Text of the message to be sent
 	 * @throws ResponseError
@@ -284,20 +293,20 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendMessage(int chatId, String text)
-			throws IOException, ParseException, ResponseError {
+	public void sendMessage(int chatId, String text) throws IOException, ParseException, ResponseError {
 		sendMessage(chatId, text, null, null, null, null);
 	}
 
 	/**
-	 * Sends a text message to the specified chat.
+	 * Sends a text message to the specified chat or to all authorized users.
 	 * <p>
 	 * Optional parameters can be set to {@code null} for default behaviors.
 	 * <p>
 	 * Refer to: https://core.telegram.org/bots/api#sendmessage
 	 * 
 	 * @param chatId
-	 *            Unique identifier for the target chat
+	 *            Unique identifier for the target chat or {@code 0} to sent to
+	 *            all authorized users
 	 * @param text
 	 *            Text of the message to be sent
 	 * @param parseMode
@@ -341,12 +350,20 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendMessage(int chatId, String text, String parseMode,
-			Boolean disableWebPagePreview, Integer replyToMessageId,
-			Map<String, Object> replyMarkup) throws IOException, ParseException, ResponseError {
-		log.debug("Sending message to {}: {}", chatId, text);
-		sendRequest(new SendMessageRequest(chatId, text, parseMode, disableWebPagePreview,
-				replyToMessageId, toReplyMarkup(replyMarkup)));
+	public void sendMessage(int chatId, String text, String parseMode, Boolean disableWebPagePreview,
+			Integer replyToMessageId, Map<String, Object> replyMarkup)
+			throws IOException, ParseException, ResponseError {
+		if (chatId == 0) {
+			synchronized (authorizedUsers) {
+				for (Integer u : authorizedUsers) {
+					sendMessage(u, text, parseMode, disableWebPagePreview, replyToMessageId, replyMarkup);
+				}
+			}
+		} else {
+			log.debug("Sending message to {}: {}", chatId, text);
+			sendRequest(new SendMessageRequest(chatId, text, parseMode, disableWebPagePreview, replyToMessageId,
+					toReplyMarkup(replyMarkup)));
+		}
 	}
 
 	/**
@@ -367,8 +384,7 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendChatAction(int chatId, String action)
-			throws IOException, ParseException, ResponseError {
+	public void sendChatAction(int chatId, String action) throws IOException, ParseException, ResponseError {
 		log.debug("Sending chat action to {}: {}", chatId, action);
 		sendRequest(new SendChatActionRequest(chatId, action));
 	}
@@ -393,8 +409,7 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendPhoto(int chatId, String path, String caption)
-			throws IOException, ParseException, ResponseError {
+	public void sendPhoto(int chatId, String path, String caption) throws IOException, ParseException, ResponseError {
 		sendPhoto(chatId, path, caption, null, null);
 	}
 
@@ -427,8 +442,8 @@ public class Telegram extends Driver {
 	public void sendPhoto(int chatId, String path, String caption, Integer replyToMessageId,
 			Map<String, Object> replyMarkup) throws IOException, ParseException, ResponseError {
 		log.debug("Sending image to {}: {}", chatId, path);
-		sendRequest(new SendPhotoRequest(chatId, Paths.get(path), caption, replyToMessageId,
-				toReplyMarkup(replyMarkup)));
+		sendRequest(
+				new SendPhotoRequest(chatId, Paths.get(path), caption, replyToMessageId, toReplyMarkup(replyMarkup)));
 	}
 
 	/**
@@ -451,8 +466,7 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendAudio(int chatId, String path, String title)
-			throws IOException, ParseException, ResponseError {
+	public void sendAudio(int chatId, String path, String title) throws IOException, ParseException, ResponseError {
 		sendAudio(chatId, path, null, null, title, null, null);
 	}
 
@@ -488,10 +502,10 @@ public class Telegram extends Driver {
 	 */
 	public void sendAudio(int chatId, String path, Integer duration, String performer, String title,
 			Integer replyToMessageId, Map<String, Object> replyMarkup)
-					throws IOException, ParseException, ResponseError {
+			throws IOException, ParseException, ResponseError {
 		log.debug("Sending audio to {}: {}", chatId, path);
-		sendRequest(new SendAudioRequest(chatId, Paths.get(path), duration, performer, title,
-				replyToMessageId, toReplyMarkup(replyMarkup)));
+		sendRequest(new SendAudioRequest(chatId, Paths.get(path), duration, performer, title, replyToMessageId,
+				toReplyMarkup(replyMarkup)));
 	}
 
 	/**
@@ -510,8 +524,7 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendDocument(int chatId, String path)
-			throws IOException, ParseException, ResponseError {
+	public void sendDocument(int chatId, String path) throws IOException, ParseException, ResponseError {
 		sendDocument(chatId, path, null, null);
 	}
 
@@ -539,11 +552,10 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendDocument(int chatId, String path, Integer replyToMessageId,
-			Map<String, Object> replyMarkup) throws IOException, ParseException, ResponseError {
+	public void sendDocument(int chatId, String path, Integer replyToMessageId, Map<String, Object> replyMarkup)
+			throws IOException, ParseException, ResponseError {
 		log.debug("Sending document to {}: {}", chatId, path);
-		sendRequest(new SendDocumentRequest(chatId, Paths.get(path), replyToMessageId,
-				toReplyMarkup(replyMarkup)));
+		sendRequest(new SendDocumentRequest(chatId, Paths.get(path), replyToMessageId, toReplyMarkup(replyMarkup)));
 	}
 
 }
