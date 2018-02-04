@@ -87,10 +87,6 @@ public class Telegram extends Driver {
 			return false;
 		}
 		botSecret = config.get("secret", null);
-		if (botSecret == null) {
-			log.error("Parameter 'secret' not found in configuration");
-			return false;
-		}
 		telegram = new TelegramBot(token);
 		try {
 			String botName = telegram.getBotName(5000);
@@ -165,24 +161,27 @@ public class Telegram extends Driver {
 
 		log.debug("Message from {}: {}", userId, text);
 
-		if (text != null && text.startsWith("/addme ")) {
-			String secret = text.substring(7).trim();
-			if (secret.equals(botSecret)) {
-				addAuthorizedUser(userId, user.getFirstName());
-				sendMessage(userId, "OK");
-			} else {
-				log.warn("User {} attempted to add himself to this bot", userId);
+		if (botSecret != null) {
+			synchronized (authorizedUsers) {
+				if (!authorizedUsers.contains(userId)) {
+					if (text != null && text.startsWith("/addme ")) {
+						String secret = text.substring(7).trim();
+						if (secret.equals(botSecret)) {
+							addAuthorizedUser(userId, user.getFirstName());
+							sendMessage(userId, "OK");
+						} else {
+							log.warn("User {} attempted to add himself to this bot", userId);
+						}
+						return;
+					}
+
+					log.warn("Message from unauthorized user {}: {}", userId, text);
+					return;
+				}
 			}
-			return;
 		}
 
-		synchronized (authorizedUsers) {
-			if (authorizedUsers.contains(userId)) {
-				Bus.post(new TelegramMessageEvent(this, message));
-			} else {
-				log.warn("Message from unauthorized user {}: {}", userId, text);
-			}
-		}
+		Bus.post(new TelegramMessageEvent(this, message));
 	}
 
 	/**

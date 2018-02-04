@@ -8,10 +8,10 @@
 		<p>
 		To use this driver you need to <a href="http://core.telegram.org/bots#botfather">create a new Telegram Bot</a>.<br />
 		Once you have created it, add a Telegram driver instance to your Sfera installation and set the token of your bot in the <code>token</code> 
-		configuration parameter. Also, specify a secret passphase in the <code>secret</code> configuration parameter that will be used to protect 
+		configuration parameter. Optionally, specify a secret passphase in the <code>secret</code> configuration parameter that will be used to protect 
 		the access to the Bot.
 		<p>
-		Once it is configured, launch Sfera and check the logs to make sure the driver is connected to the bot. Then, add your Telegram account to the trusted
+		Once it is configured, launch Sfera and check the logs to make sure the driver is connected to the bot. Then, if a passphase is configured, add your Telegram account to the trusted
 		list of users by sending a message to the created bot saying '<code>/addme secret_passphase</code>'. For instance, if the passphrase you set in the
 		configuration is "MySecret", send '<code>/addme MySecret</code>'.<br />
 		If the operation is successful, you will get a replay saying "OK". From now on, every message sent from this account to the bot will trigger an event.
@@ -22,6 +22,6 @@
 		@sfera.config token
 			Telegram Bot token
 		@sfera.config secret
-			Secret passphrase for adding new trusted users
+			Optional secret passphrase for adding new trusted users
 	</body>
 </HTML>
