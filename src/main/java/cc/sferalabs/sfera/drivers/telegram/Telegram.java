@@ -71,9 +71,10 @@ public class Telegram extends Driver {
 	private static final int REQUEST_TIMEOUT = 10000;
 	private Path authorizedUsersFile;
 	private TelegramBot telegram;
-	private Integer offset = null;
+	private Long offset = null;
 	private String botSecret;
-	private final Set<Integer> authorizedUsers = new HashSet<>();
+	private final Set<Long> authorizedUsers = new HashSet<>();
+	private long messagesTtl;
 
 	public Telegram(String id) {
 		super(id);
@@ -95,6 +96,8 @@ public class Telegram extends Driver {
 			log.error("Error reaching Telegram service", e);
 			return false;
 		}
+		messagesTtl = config.get("messagesTtl", 10);
+		messagesTtl *= 1000;
 
 		try {
 			synchronized (authorizedUsers) {
@@ -102,7 +105,7 @@ public class Telegram extends Driver {
 				List<String> lines = Files.readAllLines(authorizedUsersFile);
 				for (String line : lines) {
 					if (!line.isEmpty()) {
-						int u = Integer.parseInt(line);
+						long u = Long.parseLong(line);
 						if (u > 0) {
 							authorizedUsers.add(u);
 						}
@@ -133,7 +136,7 @@ public class Telegram extends Driver {
 					}
 				}
 
-				int updateId = update.getUpdateId();
+				long updateId = update.getUpdateId();
 				if (offset == null || updateId >= offset) {
 					offset = updateId + 1;
 				}
@@ -155,9 +158,15 @@ public class Telegram extends Driver {
 	 * @throws Exception
 	 */
 	private void processMessage(Message message) throws Exception {
+		long date = message.getInt("date");
 		String text = message.getText();
 		User user = message.getFrom();
-		int userId = user.getId();
+		long userId = user.getId();
+
+		if (System.currentTimeMillis() > date * 1000 + messagesTtl) {
+			log.warn("Message discarded from {}: {}", userId, text);
+			return;
+		}
 
 		log.debug("Message from {}: {}", userId, text);
 
@@ -190,7 +199,7 @@ public class Telegram extends Driver {
 	 * @param name
 	 * @throws IOException
 	 */
-	private void addAuthorizedUser(int id, String name) throws IOException {
+	private void addAuthorizedUser(long id, String name) throws IOException {
 		synchronized (authorizedUsers) {
 			authorizedUsers.add(id);
 
@@ -281,8 +290,8 @@ public class Telegram extends Driver {
 	 * Refer to: https://core.telegram.org/bots/api#sendmessage
 	 * 
 	 * @param chatId
-	 *            Unique identifier for the target chat or {@code 0} to sent to
-	 *            all authorized users
+	 *            Unique identifier for the target chat or {@code 0} to sent to all
+	 *            authorized users
 	 * @param text
 	 *            Text of the message to be sent
 	 * @throws ResponseError
@@ -292,7 +301,7 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendMessage(int chatId, String text) throws IOException, ParseException, ResponseError {
+	public void sendMessage(long chatId, String text) throws IOException, ParseException, ResponseError {
 		sendMessage(chatId, text, null, null, null, null);
 	}
 
@@ -304,15 +313,14 @@ public class Telegram extends Driver {
 	 * Refer to: https://core.telegram.org/bots/api#sendmessage
 	 * 
 	 * @param chatId
-	 *            Unique identifier for the target chat or {@code 0} to sent to
-	 *            all authorized users
+	 *            Unique identifier for the target chat or {@code 0} to sent to all
+	 *            authorized users
 	 * @param text
 	 *            Text of the message to be sent
 	 * @param parseMode
 	 *            "Markdown" or "HTML"
 	 * @param disableWebPagePreview
-	 *            if {@code true}, disables link previews for links in this
-	 *            message
+	 *            if {@code true}, disables link previews for links in this message
 	 * @param replyToMessageId
 	 *            If the message is a reply, ID of the original message
 	 * @param replyMarkup
@@ -320,8 +328,7 @@ public class Telegram extends Driver {
 	 *            <p>
 	 *            Refer to:
 	 *            <ul>
-	 *            <li>https://core.telegram.org/bots/api#replykeyboardmarkup
-	 *            </li>
+	 *            <li>https://core.telegram.org/bots/api#replykeyboardmarkup</li>
 	 *            <li>https://core.telegram.org/bots/api#replykeyboardhide</li>
 	 *            <li>https://core.telegram.org/bots/api#forcereply</li>
 	 *            </ul>
@@ -349,12 +356,11 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendMessage(int chatId, String text, String parseMode, Boolean disableWebPagePreview,
-			Integer replyToMessageId, Map<String, Object> replyMarkup)
-			throws IOException, ParseException, ResponseError {
+	public void sendMessage(long chatId, String text, String parseMode, Boolean disableWebPagePreview,
+			Long replyToMessageId, Map<String, Object> replyMarkup) throws IOException, ParseException, ResponseError {
 		if (chatId == 0) {
 			synchronized (authorizedUsers) {
-				for (Integer u : authorizedUsers) {
+				for (Long u : authorizedUsers) {
 					sendMessage(u, text, parseMode, disableWebPagePreview, replyToMessageId, replyMarkup);
 				}
 			}
@@ -374,8 +380,8 @@ public class Telegram extends Driver {
 	 *            Unique identifier for the target chat
 	 * @param action
 	 *            Type of action to broadcast: "typing", "upload_photo",
-	 *            "record_video", "upload_video", "record_audio",
-	 *            "upload_audio", "upload_document", or "find_location".
+	 *            "record_video", "upload_video", "record_audio", "upload_audio",
+	 *            "upload_document", or "find_location".
 	 * @throws ResponseError
 	 *             if the server returned an error response
 	 * @throws ParseException
@@ -383,7 +389,7 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendChatAction(int chatId, String action) throws IOException, ParseException, ResponseError {
+	public void sendChatAction(long chatId, String action) throws IOException, ParseException, ResponseError {
 		log.debug("Sending chat action to {}: {}", chatId, action);
 		sendRequest(new SendChatActionRequest(chatId, action));
 	}
@@ -408,7 +414,7 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendPhoto(int chatId, String path, String caption) throws IOException, ParseException, ResponseError {
+	public void sendPhoto(long chatId, String path, String caption) throws IOException, ParseException, ResponseError {
 		sendPhoto(chatId, path, caption, null, null);
 	}
 
@@ -429,8 +435,8 @@ public class Telegram extends Driver {
 	 *            If the message is a reply, ID of the original message
 	 * @param replyMarkup
 	 *            Map representing the 'reply_markup' parameter. See
-	 *            {@link #sendMessage(int, String, String, Boolean, Integer, Map)}
-	 *            for details
+	 *            {@link #sendMessage(long, String, String, Boolean, Long, Map)} for
+	 *            details
 	 * @throws ResponseError
 	 *             if the server returned an error response
 	 * @throws ParseException
@@ -438,7 +444,7 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendPhoto(int chatId, String path, String caption, Integer replyToMessageId,
+	public void sendPhoto(long chatId, String path, String caption, Long replyToMessageId,
 			Map<String, Object> replyMarkup) throws IOException, ParseException, ResponseError {
 		log.debug("Sending image to {}: {}", chatId, path);
 		sendRequest(
@@ -465,7 +471,7 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendAudio(int chatId, String path, String title) throws IOException, ParseException, ResponseError {
+	public void sendAudio(long chatId, String path, String title) throws IOException, ParseException, ResponseError {
 		sendAudio(chatId, path, null, null, title, null, null);
 	}
 
@@ -490,8 +496,8 @@ public class Telegram extends Driver {
 	 *            If the message is a reply, ID of the original message
 	 * @param replyMarkup
 	 *            Map representing the 'reply_markup' parameter. See
-	 *            {@link #sendMessage(int, String, String, Boolean, Integer, Map)}
-	 *            for details
+	 *            {@link #sendMessage(long, String, String, Boolean, Long, Map)} for
+	 *            details
 	 * @throws ResponseError
 	 *             if the server returned an error response
 	 * @throws ParseException
@@ -499,9 +505,8 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendAudio(int chatId, String path, Integer duration, String performer, String title,
-			Integer replyToMessageId, Map<String, Object> replyMarkup)
-			throws IOException, ParseException, ResponseError {
+	public void sendAudio(long chatId, String path, Integer duration, String performer, String title,
+			Long replyToMessageId, Map<String, Object> replyMarkup) throws IOException, ParseException, ResponseError {
 		log.debug("Sending audio to {}: {}", chatId, path);
 		sendRequest(new SendAudioRequest(chatId, Paths.get(path), duration, performer, title, replyToMessageId,
 				toReplyMarkup(replyMarkup)));
@@ -523,7 +528,7 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendDocument(int chatId, String path) throws IOException, ParseException, ResponseError {
+	public void sendDocument(long chatId, String path) throws IOException, ParseException, ResponseError {
 		sendDocument(chatId, path, null, null);
 	}
 
@@ -542,8 +547,8 @@ public class Telegram extends Driver {
 	 *            If the message is a reply, ID of the original message
 	 * @param replyMarkup
 	 *            Map representing the 'reply_markup' parameter. See
-	 *            {@link #sendMessage(int, String, String, Boolean, Integer, Map)}
-	 *            for details
+	 *            {@link #sendMessage(long, String, String, Boolean, Long, Map)} for
+	 *            details
 	 * @throws ResponseError
 	 *             if the server returned an error response
 	 * @throws ParseException
@@ -551,7 +556,7 @@ public class Telegram extends Driver {
 	 * @throws IOException
 	 *             if an I/O exception occurs
 	 */
-	public void sendDocument(int chatId, String path, Integer replyToMessageId, Map<String, Object> replyMarkup)
+	public void sendDocument(long chatId, String path, Long replyToMessageId, Map<String, Object> replyMarkup)
 			throws IOException, ParseException, ResponseError {
 		log.debug("Sending document to {}: {}", chatId, path);
 		sendRequest(new SendDocumentRequest(chatId, Paths.get(path), replyToMessageId, toReplyMarkup(replyMarkup)));
