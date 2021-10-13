@@ -55,6 +55,7 @@ import cc.sferalabs.libs.telegram.bot.api.types.User;
 import cc.sferalabs.sfera.core.Configuration;
 import cc.sferalabs.sfera.drivers.Driver;
 import cc.sferalabs.sfera.drivers.telegram.events.TelegramMessageEvent;
+import cc.sferalabs.sfera.drivers.telegram.events.TelegramUpdateEvent;
 import cc.sferalabs.sfera.events.Bus;
 
 /**
@@ -129,7 +130,7 @@ public class Telegram extends Driver {
 			updates.forEach(update -> {
 				for (int i = 0; i < 3; i++) {
 					try {
-						processMessage(update.getMessage());
+						processUpdate(update);
 						break;
 					} catch (Exception e) {
 						log.error("Error processing update " + update, e);
@@ -157,7 +158,13 @@ public class Telegram extends Driver {
 	 * @param message
 	 * @throws Exception
 	 */
-	private void processMessage(Message message) throws Exception {
+	private void processUpdate(Update update) throws Exception {
+		Message message = update.getMessage();
+		if (message == null) {
+			Bus.post(new TelegramUpdateEvent(this, update));
+			return;
+		}
+
 		long date = message.getInt("date");
 		String text = message.getText();
 		User user = message.getFrom();
