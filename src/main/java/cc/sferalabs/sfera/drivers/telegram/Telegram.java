@@ -76,6 +76,7 @@ public class Telegram extends Driver {
 	private String botSecret;
 	private final Set<Long> authorizedUsers = new HashSet<>();
 	private long messagesTtl;
+	private boolean pollUpdates;
 
 	public Telegram(String id) {
 		super(id);
@@ -99,6 +100,7 @@ public class Telegram extends Driver {
 		}
 		messagesTtl = config.get("messagesTtl", 10);
 		messagesTtl *= 1000;
+		pollUpdates = config.get("pollUpdates", true);
 
 		try {
 			synchronized (authorizedUsers) {
@@ -125,30 +127,34 @@ public class Telegram extends Driver {
 
 	@Override
 	protected boolean loop() throws InterruptedException {
-		try {
-			List<Update> updates = telegram.pollUpdates(offset, null, POLLING_TIMEOUT);
-			updates.forEach(update -> {
-				for (int i = 0; i < 3; i++) {
-					try {
-						processUpdate(update);
-						break;
-					} catch (Exception e) {
-						log.error("Error processing update " + update, e);
+		if (pollUpdates) {
+			try {
+				List<Update> updates = telegram.pollUpdates(offset, null, POLLING_TIMEOUT);
+				updates.forEach(update -> {
+					for (int i = 0; i < 3; i++) {
+						try {
+							processUpdate(update);
+							break;
+						} catch (Exception e) {
+							log.error("Error processing update " + update, e);
+						}
 					}
-				}
 
-				long updateId = update.getUpdateId();
-				if (offset == null || updateId >= offset) {
-					offset = updateId + 1;
-				}
-			});
+					long updateId = update.getUpdateId();
+					if (offset == null || updateId >= offset) {
+						offset = updateId + 1;
+					}
+				});
 
-		} catch (IOException | ParseException e) {
-			log.error("Polling error", e);
-			return false;
-		} catch (ResponseError e) {
-			log.error("Response error", e);
-			return false;
+			} catch (IOException | ParseException e) {
+				log.error("Polling error", e);
+				return false;
+			} catch (ResponseError e) {
+				log.error("Response error", e);
+				return false;
+			}
+		} else {
+			Thread.sleep(Integer.MAX_VALUE);
 		}
 
 		return true;
