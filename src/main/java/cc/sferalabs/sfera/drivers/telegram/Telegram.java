@@ -161,6 +161,48 @@ public class Telegram extends Driver {
 	}
 
 	/**
+	 * Requests all unconfirmed updates, waiting up to the specified timeout.
+	 * Returned updates are then set as 'confirmed' (i.e. received) to the Telegram
+	 * server.
+	 * 
+	 * Can be called only if option 'pollUpdates' is set to {@code false}.
+	 * 
+	 * @param timeout
+	 *            the timeout parameter
+	 * @return a list containing the received updates
+	 * @throws IOException
+	 *             if an I/O exception occurs
+	 * @throws ParseException
+	 *             if an error occurs while parsing the server response
+	 * @throws ResponseError
+	 *             if the server returned an error response
+	 */
+	public List<Update> pollUpdates(Integer timeout) throws IOException, ParseException, ResponseError {
+		if (pollUpdates) {
+			throw new IllegalStateException("Driver is polling");
+		}
+
+		if (telegram == null) {
+			throw new IOException("Driver not running");
+		}
+
+		List<Update> updates = telegram.pollUpdates(null, null, timeout);
+		if (!updates.isEmpty()) {
+			long maxUpdateId = -1;
+			for (Update update : updates) {
+				long updateId = update.getUpdateId();
+				if (updateId > maxUpdateId) {
+					maxUpdateId = updateId;
+				}
+			}
+			// confirm received updates
+			telegram.pollUpdates(maxUpdateId + 1, 1, 0);
+		}
+
+		return updates;
+	}
+
+	/**
 	 * @param message
 	 * @throws Exception
 	 */
