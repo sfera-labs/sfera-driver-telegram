@@ -2,18 +2,18 @@
 	<body>
 		This driver implements the <a href="http://core.telegram.org/bots/api">Telegram Bot API</a>.
 		<p>
-		It allows to send/receive messages to/from Sfera through the <a href="http://telegram.org/">Telegram Messenger</a> application.<br />
-		You can therefore trigger custom logic upon the receiving of messages or you can send out notifications triggered by other events.<br />
+		It allows to send/receive messages to/from Sfera through the <a href="http://telegram.org/">Telegram Messenger</a> application.<br>
+		You can therefore trigger custom logic upon the receiving of messages or you can send out notifications triggered by other events.<br>
 		Messages sent from Sfera can include medias too, such as images, documents, audio, etc.
 		<p>
-		To use this driver you need to <a href="http://core.telegram.org/bots#botfather">create a new Telegram Bot</a>.<br />
+		To use this driver you need to <a href="http://core.telegram.org/bots#botfather">create a new Telegram Bot</a>.<br>
 		Once you have created it, add a Telegram driver instance to your Sfera installation and set the token of your bot in the <code>token</code> 
 		configuration parameter. Optionally, specify a secret passphase in the <code>secret</code> configuration parameter that will be used to protect 
 		the access to the Bot.
 		<p>
 		Once it is configured, launch Sfera and check the logs to make sure the driver is connected to the bot. Then, if a passphase is configured, add your Telegram account to the trusted
 		list of users by sending a message to the created bot saying '<code>/addme secret_passphase</code>'. For instance, if the passphrase you set in the
-		configuration is "MySecret", send '<code>/addme MySecret</code>'.<br />
+		configuration is "MySecret", send '<code>/addme MySecret</code>'.<br>
 		If the operation is successful, you will get a replay saying "OK". From now on, every message sent from this account to the bot will trigger an event.
 		
 		@author Giampiero Baggiani
