@@ -4,7 +4,7 @@
 
 	<groupId>cc.sferalabs.sfera.drivers</groupId>
 	<artifactId>telegram</artifactId>
-	<version>1.5.0</version>
+	<version>1.5.1</version>
 
 	<name>Telegram</name>
 	<description>Driver implementing the Telegram Bot API</description>
@@ -166,7 +166,7 @@
 		<dependency>
 			<groupId>cc.sferalabs.libs</groupId>
 			<artifactId>telegram-bot</artifactId>
-			<version>1.0.2</version>
+			<version>1.0.3</version>
 		</dependency>
 	</dependencies>
 </project>
